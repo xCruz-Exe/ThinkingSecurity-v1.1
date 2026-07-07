@@ -1,0 +1,18 @@
+﻿{
+  "token": "YOUR_BOT_TOKEN_HERE",
+  "timeoutMinutes": 10,
+  "hammingThreshold": 8,
+  "notifyChannelId": "PASTE_YOUR_LOG_CHANNEL_ID_HERE",
+  "keywordFilterEnabled": true,
+  "scamKeywords": [
+    "withdrawal success",
+    "crypto casino",
+    "promo code",
+    "rakeback",
+    "claim your bonus",
+    "free giveaway",
+    "double your crypto",
+    "send crypto to receive",
+    "verify your wallet"
+  ]
+}
