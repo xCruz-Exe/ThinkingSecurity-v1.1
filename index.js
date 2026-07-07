@@ -98,7 +98,17 @@ async function punishMember(message, reason) {
       .setFooter({ text: '🛡️ Protected by Thinking Security Bot' })
       .setTimestamp();
 
-    const warningMsg = await channel.send({ embeds: [warningEmbed] });
+    let warningMsg;
+    try {
+      warningMsg = await channel.send({ embeds: [warningEmbed] });
+    } catch (embedErr) {
+      console.warn('Embed sending failed, attempting plain text fallback:', embedErr.message);
+      // Fallback to plain text message if the bot doesn't have "Embed Links" permission
+      warningMsg = await channel.send(
+        `🚫 ${message.author} (**${message.author.username}**) sent a scam/invite link that was automatically removed! ` +
+        `They have been timed out for **${config.timeoutMinutes} minutes**.`
+      );
+    }
 
     // Auto-delete the warning after 15 seconds to keep the channel clean
     setTimeout(() => {
@@ -175,7 +185,20 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-async function startBot(retries = 5, delay = 5000) {
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason?.message || reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err.message);
+  if (err.message.includes('ENOTFOUND') || err.message.includes('TIMEOUT') || err.message.includes('timeout') || err.message.includes('ECONNRESET')) {
+    console.log('Network error detected. Keeping process alive and letting Discord.js handle reconnection...');
+  } else {
+    process.exit(1);
+  }
+});
+
+async function startBot(retries = 99999, delay = 5000) {
   for (let i = 1; i <= retries; i++) {
     try {
       await client.login(config.token);
