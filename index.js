@@ -75,12 +75,37 @@ function containsScamKeywords(text) {
 
 async function punishMember(message, reason) {
   const member = message.member;
+  const channel = message.channel;
 
   // Delete the offending message first
   try {
     await message.delete();
   } catch (err) {
     console.error('Could not delete message:', err.message);
+  }
+
+  // Send a public warning in the same channel mentioning the spammer
+  try {
+    const { EmbedBuilder } = require('discord.js');
+    const warningEmbed = new EmbedBuilder()
+      .setColor(0xff3333)
+      .setTitle('🚫 Spam Detected & Removed')
+      .setDescription(
+        `${message.author} **${message.author.username}** sent a scam message that was automatically removed.\n\n` +
+        `⏱️ They have been timed out for **${config.timeoutMinutes} minutes**.\n\n` +
+        `*Stay safe — do not click any suspicious links or offers!*`
+      )
+      .setFooter({ text: '🛡️ Protected by Thinking Security Bot' })
+      .setTimestamp();
+
+    const warningMsg = await channel.send({ embeds: [warningEmbed] });
+
+    // Auto-delete the warning after 15 seconds to keep the channel clean
+    setTimeout(() => {
+      warningMsg.delete().catch(() => {});
+    }, 15000);
+  } catch (err) {
+    console.error('Could not send public warning:', err.message);
   }
 
   // Timeout the member, if the bot has permission and they aren't an admin
@@ -112,11 +137,19 @@ client.on('messageCreate', async (message) => {
   // Never act on server admins/mods so the bot can't be used to lock them out
   if (message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) return;
 
+  // 0) Discord invite link check
+  const inviteRegex = /(discord\.gg\/|discord\.com\/invite\/|discordapp\.com\/invite\/)[a-zA-Z0-9-]+/i;
+  if (inviteRegex.test(message.content)) {
+    await punishMember(message, 'Posted an unauthorized Discord invite link.');
+    return;
+  }
+
   // 1) Keyword check on the message text
   if (containsScamKeywords(message.content)) {
     await punishMember(message, 'Message matched known crypto-scam keywords.');
     return;
   }
+
 
   // 2) Image check on attachments
   for (const attachment of message.attachments.values()) {
